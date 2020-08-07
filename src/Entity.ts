@@ -1,6 +1,6 @@
 import assert from "assert";
 import { Message, MessageType } from "./Message";
-import { Input } from "./Input2";
+import { Input } from "./Input";
 
 
 export interface Entity {
