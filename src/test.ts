@@ -1,9 +1,9 @@
 import tty from "tty";
 
 import { Message, MessageType } from "./Message";
-import { Network } from "./Network2";
+import { Network } from "./Network";
 import { Entity } from "./Entity";
-import { World } from "./World2";
+import { World } from "./World";
 
 
 const CLIENT_NUMBER = 2;
