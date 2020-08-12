@@ -12,6 +12,7 @@ export interface Entity {
     lastInput: Input;
     prediction: Input[];
     incorrect: number | null;
+    onUpdate: ((entity: Entity, frame: number, input: Input) => void) | null;
 }
 
 function addInputInternal(entity: Entity, input: Input) {
@@ -24,9 +25,6 @@ function addInputInternal(entity: Entity, input: Input) {
     // 예측과 어긋났는지 확인을 해야한다
     const prediction = entity.prediction.shift();
     if (prediction !== undefined) {
-        if (prediction.frame !== input.frame) {
-            console.log(JSON.stringify(entity, null, " "));
-        }
         assert(prediction.frame === input.frame, `${prediction.frame} === ${input.frame}`);
 
         // 프레임 예측이 발생한 상황이다
@@ -79,9 +77,6 @@ function getInput(entity: Entity, requestedFrame: number): Input {
     // 내 프레임보다 입력이 부족한 경우에는 예측을 해야한다
     // 요청받은 프레임이 마지막 수신받은 입력보다 나중 프레임이어야 한다
     // 입력 발생측에서 프레임 딜레이가 발생했을 경우에 여기로 오게 된다
-    if (requestedFrame <= entity.lastInput.frame) {
-        console.log(JSON.stringify(entity, null, " "));
-    }
     assert (requestedFrame > entity.lastInput.frame, `${requestedFrame} > ${entity.lastInput.frame}`);
     if (entity.prediction.length > 0) {
         const found = entity.prediction.find(v => v.frame === requestedFrame);
@@ -92,18 +87,27 @@ function getInput(entity: Entity, requestedFrame: number): Input {
         // 여기 도착하는 경우는 예측중에 다음 프레임 요청을 받았을때뿐이다
         // 이런 경우에는 마지막 예측 프레임보다 하나 큰 프레임을 요청 받아야 한다
         assert(requestedFrame === entity.prediction[entity.prediction.length - 1].frame + 1);
-    } else {
-        if(requestedFrame !== entity.lastInput.frame + 1) {
-            console.log(JSON.stringify(entity, null, " "));
-        }
-        assert(requestedFrame === entity.lastInput.frame + 1, `${requestedFrame} === ${entity.lastInput.frame + 1}`);
     }
 
     // 새로운 예측을 만들어서 넣는다
-    const prediction = Input.create(requestedFrame, entity.lastInput.data);
-    entity.prediction.push(prediction);
+    if (entity.lastInput.frame >= 0) {
+        assert(entity.prediction.length === 0  || entity.prediction[0].frame === entity.lastInput.frame +1);
+        const lastPredictedFrame = entity.prediction.length > 0 ? entity.prediction[entity.prediction.length -  1].frame : entity.lastInput.frame;
+        assert(requestedFrame > lastPredictedFrame);
 
-    return prediction;
+        // 마지막 입력과 현재 입력사이에 에측큐를 구축한다
+        for (let i = lastPredictedFrame + 1; i < requestedFrame; ++i) {
+            const padding = Input.create(i, entity.lastInput.data);
+            entity.prediction.push(padding);
+        }
+
+        const prediction = Input.create(requestedFrame, entity.lastInput.data);
+        entity.prediction.push(prediction);
+        return prediction;
+    } else {
+        // 첫번째 입력전에는 예측큐를 구성하지 않는다
+        return Input.create(requestedFrame, entity.lastInput.data);
+    }
 }
 
 export namespace Entity {
@@ -115,6 +119,7 @@ export namespace Entity {
             lastInput: Input.create(-1, 0),
             prediction: [],
             incorrect: null,
+            onUpdate: null,
         };
     }
 
@@ -126,24 +131,26 @@ export namespace Entity {
             case MessageType.Input: {
                 // 인풋을 받아서 처리한다
                 const input = Input.create(msg.body.frame, msg.body.data);
-                assert(entity.lastInput.frame + 1 === msg.body.frame);
+                assert(entity.lastInput.frame === -1 || entity.lastInput.frame + 1 === msg.body.frame, `${entity.lastInput.frame} + 1 === ${msg.body.frame}`);
                 addInput(entity, input);
                 break;
             };
         }
     }
 
-    export function update(entity: Entity, frame: number) {
+    export function update(entity: Entity, frame: number, input: Input) {
         // 매프레임 업데이트 하는 함수이다
         // 주어진 입력(액션) 을 엔티티에게 전달해서 처리하도록 한다
         // 각각의 액션을 받고 어떻게 반응할지는 엔티티가 스스로 판단한다
 
-        // act by input
+        if (entity.onUpdate !== null) {
+            entity.onUpdate(entity, frame, input);
+        }
     }
     
     export function addLocalInput(entity: Entity, frame: number, inputValue: number) {
         const input = Input.create(frame, inputValue);
-        assert(entity.lastInput.frame + 1 === input.frame);
+        assert(entity.lastInput.frame < 0 || entity.lastInput.frame + 1 === input.frame, `${entity.lastInput.frame} + 1 === ${input.frame}`);
         addInput(entity, input);
     }
 

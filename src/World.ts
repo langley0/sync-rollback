@@ -1,44 +1,60 @@
 import { Entity } from "./Entity";
 
-const wait = (timeout: number) => {
-    return new Promise(resolve => {
-        setTimeout(resolve, timeout);
-    })
-};
-
 export interface World {
     currentFrame: number;
     entities: Entity[];
     controlled: number | null;
 }
 
-const PROGRESSBAR = "O";
+const LENGTH = 40;
+let buffer = Buffer.from(new Array(LENGTH).fill(" "));
 
 function log(index: number, state: number, frame: number)  {
-    process.stdout.cursorTo(frame % process.stdout.columns, index);
-    if (state === 0) {
-        process.stdout.write(PROGRESSBAR);
-    } else if (state === 1) {
-        process.stdout.write("\x1b[31m" + PROGRESSBAR + "\x1b[0m");
+    const column = frame % LENGTH;
+    if (column === 0) {
+        buffer = Buffer.from(new Array(LENGTH).fill(""));
     }
+    if (state === 0) {
+        buffer[column] = "O".charCodeAt(0);
+    } else {
+        buffer[column] = "X".charCodeAt(0);
+    }
+
+    const progressbar = document.getElementById("progressbar");
+    const htmlStr = buffer.toString();
+    progressbar!.innerHTML = htmlStr.replace(/O/g, "○").replace(/X/g, `<span style="color:red;">●</span>`);
+    
+
+    /*if (state === 1) {
+        const progressbar = document.getElementById("progressbar");
+        progressbar!.innerText = "last rollbacked frame is " + frame;
+    }*/
 }
 
 function update(world: World, frame: number) {
     // 인풋을 처리한다
     const inputs = world.entities.map(e => Entity.syncInput(e, frame));
-
-    // 매프레임업데이트를 한다
-    world.entities.forEach(e => Entity.update(e, frame));
+    world.entities.forEach((e, index) => Entity.update(e, frame, inputs[index]));
 
 }
 
 // 엔티티의 상태를 어떻게 저장하고 읽을수 있을까
+const saveslot: any[] = [];
 function save(world: World, frame: number) {
-    // TODO
+    saveslot.push({ frame, state: JSON.stringify((world as any).state) });
+    if (saveslot.length > 200) {
+        saveslot.shift();
+    }
 }
 
 function load(world: World, frame: number) {
-    // TODo
+    const saved = saveslot.find(s => s.frame === frame);
+    if (saved === undefined) {
+        throw new Error("invalid savedframe " + frame);
+    }
+    saveslot.splice(0, saveslot.length);
+    (world as any).state = JSON.parse(saved.state);
+    world.currentFrame = frame;
 }
 
 function updateSafeFrame(world: World) {
@@ -83,14 +99,16 @@ export namespace World {
         world.entities.forEach(e => Entity.resetPrediction(e));
         
         // frame load / 모든 엔티티의 상태를 다시 로드해야한다
+        const count = world.currentFrame - from;
         load(world, from);
 
         // force advance frame
         // 롤백된 프레임 만큼 다시 현재 상태를 로드한다
-        for(let i = from; i < world.currentFrame ; i++) {
-            update(world, i);
-            save(world, i);
-            log(world.controlled!, 1, i);
+        for(let i = 0; i < count ; i++) {
+            const currentFrame = world.currentFrame;
+            update(world, currentFrame);
+            save(world, currentFrame + 1);
+            world.currentFrame =  currentFrame + 1;
         }
 
         // finish rollbck
@@ -102,11 +120,11 @@ export namespace World {
             // 롤백후 다시 현재 프레임까지 진행시킨다
             rewind(world, incorrectFrame);
         }
+        const currentFrame = world.currentFrame;
 
-        update(world, world.currentFrame);
-        save(world, world.currentFrame);
-        log(world.controlled!, 0, world.currentFrame);
-        world.currentFrame ++;
+        update(world, currentFrame);
+        save(world, currentFrame + 1);
+        world.currentFrame =  currentFrame + 1;
 
         // 롤백경계선밖에 있는 입력데이터를 여기서 드랍시킨다
         updateSafeFrame(world);

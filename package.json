@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "start": "ts-node --files ./src/index.ts",
+    "start": "react-app-rewired start",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
@@ -14,9 +14,30 @@
     "@types/express": "^4.17.7",
     "@types/keypress": "^2.0.30",
     "@types/node": "^14.0.27",
+    "@types/react": "^16.9.46",
+    "@types/react-dom": "^16.9.8",
+    "@types/ws": "^7.2.6",
     "axios": "^0.19.2",
+    "customize-cra": "^1.0.0",
     "express": "^4.17.1",
     "keypress": "^0.2.1",
-    "typescript": "^3.9.7"
+    "react": "^16.13.1",
+    "react-app-rewired": "^2.1.6",
+    "react-dom": "^16.13.1",
+    "react-scripts": "^3.4.1",
+    "typescript": "^3.9.7",
+    "ws": "^7.3.1"
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
   }
 }

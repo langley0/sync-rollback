@@ -7,6 +7,11 @@ export enum MessageType {
     QualityReply  = 5,
     KeepAlive     = 6,
     InputAck      = 7,
+    FrameRequest  = 8,
+    FrameReply    = 9,
+    
+    JoinRequest   = 101,
+    JoinReply     = 102,
 };
 
 export interface Message {
