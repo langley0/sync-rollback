@@ -68,7 +68,7 @@ ReactDOM.render(
 let timer: NodeJS.Timeout;
 
 function start(index: number) {
-    const ws = new WebSocket("ws://3.34.182.234:8080");
+    const ws = new WebSocket("ws://3.34.182.234:3001");
     ws.onopen = () => {
         // 처음 프레임싱크를 한다
         const syncMsg = { type: MessageType.FrameRequest, from: -1 };

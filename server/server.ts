@@ -5,7 +5,7 @@ import { Game } from "../src/game";
 import { Network } from "../src/Network";
 import { assert } from "console";
 
-const wss = new ws.Server({ port: 8080 });
+const wss = new ws.Server({ port: 3001 });
 let myId = 0;
 const sockets: { id: number, socket: ws }[] = [];
 
