@@ -21,13 +21,17 @@ const styles: { [key: string]: React.CSSProperties } = {
         marginBottom: 16,
     },
     canvasContainer: {
-        width: "100%",
+        width: 600,
+        margin: "auto",
         display: "felx",
+        flexDirection: "column",
     },
     canvas: {
-        margin: "auto",
         width: 600,
         height: 400,
+    },
+    bar: {
+        fontSize: 12,
     }
 }
 
@@ -41,13 +45,16 @@ const Lobby = () => {
         { started ? (
         <div style={styles.canvasContainer}>
             <canvas style={styles.canvas} id="canvas" width={600} height={400}></canvas>
-            <div id="info"></div>
-            <div id="progressbar"></div>
+            <div>전진: Up, 후진: Down, 회전: Left, Right, 무기사용: Ctrl</div>
+            <div>Frame: <span id="info"></span></div>
+            <div><span>○ = 정상프레임, </span><span style={{color:"red"}}>●</span> = 롤백프레임</div>
+            <div style={styles.bar}id="progressbar"></div>
         </div> 
         ) : (
         <div style={styles.buttons}>
-            <button style={styles.button} onClick={() => start(0) }>Create Room</button>
-            <button style={styles.button} onClick={() => start(1) }>Join Room</button>
+            <button style={styles.button} onClick={() => start(0) }>Player 1</button>
+            <button style={styles.button} onClick={() => start(1) }>Player 2</button>
+            <button style={styles.button} onClick={() => start(-1) }>Watch</button>
         </div>
         )}
     </div>);
@@ -58,6 +65,7 @@ ReactDOM.render(
     document.getElementById("root")
 );
 
+let timer: NodeJS.Timeout;
 
 function start(index: number) {
     const ws = new WebSocket("ws://localhost:8080");
@@ -65,6 +73,15 @@ function start(index: number) {
         // 처음 프레임싱크를 한다
         const syncMsg = { type: MessageType.FrameRequest, from: -1 };
         ws.send(JSON.stringify(syncMsg));
+
+        ws.onclose = () => {
+            started = false; 
+            clearTimeout(timer);
+            ReactDOM.render(
+                <Lobby/>,
+                document.getElementById("root")
+            );
+        };
 
         ws.onmessage = (ev) => {
             const reply: Message = JSON.parse(ev.data);
@@ -91,15 +108,19 @@ function start(index: number) {
 
                 // 연결을 한다
                 const currentFrame = reply.body.frame;
+                const currentState = reply.body.state;
                 const game = Game.init(2, index, network);
-                game.currentFrame = currentFrame + 2; // 싱크 타이밍을 맞춘다
+                game.currentFrame = currentFrame + 1; // 싱크 타이밍을 맞춘다
+                game.state = currentState;
+
+
                 const Interval = 60;
                 let nextTime = Date.now() + Interval;
                 const run = () => { 
                     Game.runFrame(game);
                     const now = Date.now();
                     nextTime = nextTime + Interval;
-                    setTimeout(run, nextTime - now);
+                    timer = setTimeout(run, nextTime - now);
 
                     const info = document.getElementById("info");
                     info!.innerText = game.currentFrame.toString();

@@ -2,7 +2,7 @@ import { World } from "./World";
 import { Entity } from "./Entity";
 import { Network } from "./Network";
 import { Message, MessageType } from "./Message";
-import { getInput } from "./gameInput";
+import { getInput, initInput } from "./gameInput";
 
 const STARTING_HEALTH = 100;
 const ROTATE_INCREMENT = 3;
@@ -66,8 +66,7 @@ export interface Game extends World {
 }
 
 function getBounds(): Rect {
-    const canvas = document.getElementById("canvas") as HTMLCanvasElement;
-    return { x: 0, y: 0, width: canvas.width, height: canvas.height };
+    return { x: 0, y: 0, width: 600, height: 400 };
 }
 
 function distance(x1: number, y1: number, x2: number , y2: number): number {
@@ -221,6 +220,9 @@ export namespace Game {
             });
         }
         game.controlled = controlled;
+        if (controlled !== -1) {
+            initInput();
+        }
 
         // 각각의 ship 을 월드 엔티티로 선언한다
         return game;

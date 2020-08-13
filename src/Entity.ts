@@ -23,18 +23,18 @@ function addInputInternal(entity: Entity, input: Input) {
      entity.lastInput = input;
 
     // 예측과 어긋났는지 확인을 해야한다
-    const prediction = entity.prediction.shift();
-    if (prediction !== undefined) {
-        assert(prediction.frame === input.frame, `${prediction.frame} === ${input.frame}`);
-
-        // 프레임 예측이 발생한 상황이다
-        // 프레임 예측이 실패했는지 본다
-
-        if (!Input.equal(prediction, input)) {
-            // 예측이 실패하였다
-            // 롤백이 필요하다
-            if (entity.incorrect === null) {
+    if (entity.incorrect === null) {
+        const prediction = entity.prediction.find(p => p.frame === input.frame);
+        if (prediction !== undefined) {
+            // 프레임 예측이 발생한 상황이다
+            // 프레임 예측이 실패했는지 본다
+            if (!Input.equal(prediction, input)) {
+                // 예측이 실패하였다
+                // 롤백이 필요하다
                 entity.incorrect = input.frame;
+            } else {
+                // 인풋아래의 prediciton 은 모두 버린다
+                entity.prediction = entity.prediction.filter(p => p.frame > input.frame);
             }
         }
     }
@@ -58,13 +58,15 @@ function addInput(entity: Entity, input: Input) {
 }
 
 function getInput(entity: Entity, requestedFrame: number): Input {
+
+    assert(entity.incorrect === null);
     
     // 중요한것은 요청받은 프레임은 입력큐안에 있는 최소 프레임보다 커야 한다는 것이다
     // 롤백상황에서 입력을 재실행하기 위해서 입력큐는 롤백 최전선보다 위로 항상 유지를 하고 있어야 한다
     // [롤백하지 않는 상황] 이 인식되면 해당만큼의 입력큐는 비우게 된다. 
     // 입력큐의 최대 크기가 롤백가능한 프레임최대수가 된다.
     if (entity.inputs.length > 0) {
-        assert(requestedFrame >= entity.inputs[0].frame, `${requestedFrame} >= ${entity.inputs[0].frame}`);
+        //assert(requestedFrame >= entity.inputs[0].frame, `${requestedFrame} >= ${entity.inputs[0].frame}`);
 
         // 기본 상태에서는 아래의 입력큐에서 입력을 찾아가게 된다
         // 남아있는 입력큐안에서 마지막 입력을 찾는다
@@ -77,7 +79,7 @@ function getInput(entity: Entity, requestedFrame: number): Input {
     // 내 프레임보다 입력이 부족한 경우에는 예측을 해야한다
     // 요청받은 프레임이 마지막 수신받은 입력보다 나중 프레임이어야 한다
     // 입력 발생측에서 프레임 딜레이가 발생했을 경우에 여기로 오게 된다
-    assert (requestedFrame > entity.lastInput.frame, `${requestedFrame} > ${entity.lastInput.frame}`);
+    //assert (requestedFrame > entity.lastInput.frame, `${requestedFrame} > ${entity.lastInput.frame}`);
     if (entity.prediction.length > 0) {
         const found = entity.prediction.find(v => v.frame === requestedFrame);
         if (found !== undefined) {
@@ -91,9 +93,9 @@ function getInput(entity: Entity, requestedFrame: number): Input {
 
     // 새로운 예측을 만들어서 넣는다
     if (entity.lastInput.frame >= 0) {
-        assert(entity.prediction.length === 0  || entity.prediction[0].frame === entity.lastInput.frame +1);
+        assert(entity.prediction.length === 0  || entity.prediction[0].frame === entity.lastInput.frame +1, `${entity.prediction.length >0 && entity.prediction[0].frame} === ${entity.lastInput.frame} +1`);
         const lastPredictedFrame = entity.prediction.length > 0 ? entity.prediction[entity.prediction.length -  1].frame : entity.lastInput.frame;
-        assert(requestedFrame > lastPredictedFrame);
+        assert(entity.prediction.length === 0  || requestedFrame > lastPredictedFrame);
 
         // 마지막 입력과 현재 입력사이에 에측큐를 구축한다
         for (let i = lastPredictedFrame + 1; i < requestedFrame; ++i) {
@@ -131,7 +133,6 @@ export namespace Entity {
             case MessageType.Input: {
                 // 인풋을 받아서 처리한다
                 const input = Input.create(msg.body.frame, msg.body.data);
-                assert(entity.lastInput.frame === -1 || entity.lastInput.frame + 1 === msg.body.frame, `${entity.lastInput.frame} + 1 === ${msg.body.frame}`);
                 addInput(entity, input);
                 break;
             };

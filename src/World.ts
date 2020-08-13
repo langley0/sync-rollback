@@ -9,7 +9,13 @@ export interface World {
 const LENGTH = 40;
 let buffer = Buffer.from(new Array(LENGTH).fill(" "));
 
-function log(index: number, state: number, frame: number)  {
+
+function log(state: number, frame: number)  {
+    if (typeof window === 'undefined') { return; }
+    const progressbar = document.getElementById("progressbar");
+    if (progressbar === null) { return; }
+    
+    
     const column = frame % LENGTH;
     if (column === 0) {
         buffer = Buffer.from(new Array(LENGTH).fill(""));
@@ -19,8 +25,7 @@ function log(index: number, state: number, frame: number)  {
     } else {
         buffer[column] = "X".charCodeAt(0);
     }
-
-    const progressbar = document.getElementById("progressbar");
+    
     const htmlStr = buffer.toString();
     progressbar!.innerHTML = htmlStr.replace(/O/g, "○").replace(/X/g, `<span style="color:red;">●</span>`);
     
@@ -108,6 +113,7 @@ export namespace World {
             const currentFrame = world.currentFrame;
             update(world, currentFrame);
             save(world, currentFrame + 1);
+            log(-1, currentFrame);
             world.currentFrame =  currentFrame + 1;
         }
 
@@ -124,6 +130,7 @@ export namespace World {
 
         update(world, currentFrame);
         save(world, currentFrame + 1);
+        log(0, currentFrame);
         world.currentFrame =  currentFrame + 1;
 
         // 롤백경계선밖에 있는 입력데이터를 여기서 드랍시킨다
